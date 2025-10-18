@@ -4,7 +4,7 @@
  * Read operations for all entities.
  */
 
-import { query } from './_generated/server';
+import { query } from './_generated/server.js';
 import { v } from 'convex/values';
 
 /**

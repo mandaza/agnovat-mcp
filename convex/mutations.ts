@@ -4,7 +4,7 @@
  * Write operations for all entities.
  */
 
-import { mutation } from './_generated/server';
+import { mutation } from './_generated/server.js';
 import { v } from 'convex/values';
 
 /**
