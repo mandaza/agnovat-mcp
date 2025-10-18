@@ -6,7 +6,7 @@
 
 export * from './clients.js';
 export * from './goals.js';
-// export * from './activities.js';
+export * from './activities.js';
+export * from './stakeholders.js';
 // export * from './shift-notes.js';
-// export * from './stakeholders.js';
 // export * from './dashboard.js';
