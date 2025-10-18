@@ -10,6 +10,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { JsonStorage } from './storage/json-storage.js';
+import { ConvexStorage } from './storage/convex-storage.js';
+import { StorageProvider } from './storage/base.js';
 import { registerTools } from './mcp/tools.js';
 import { registerResources } from './mcp/resources.js';
 import { registerPrompts } from './mcp/prompts.js';
@@ -21,9 +23,23 @@ import { ApplicationError } from './utils/errors.js';
  */
 async function main(): Promise<void> {
   try {
-    // Initialize storage
-    const dataDir = process.env['DATA_DIR'] || './data';
-    const storage = new JsonStorage({ dataDir });
+    // Initialize storage based on environment
+    const storageType = process.env['STORAGE_TYPE'] || 'json';
+    let storage: StorageProvider;
+
+    if (storageType === 'convex') {
+      const deploymentUrl = process.env['CONVEX_URL'];
+      if (!deploymentUrl) {
+        throw new Error('CONVEX_URL environment variable is required when using Convex storage');
+      }
+      storage = new ConvexStorage({ deploymentUrl });
+      logger.info('Using Convex storage');
+    } else {
+      const dataDir = process.env['DATA_DIR'] || './data';
+      storage = new JsonStorage({ dataDir });
+      logger.info('Using JSON file storage');
+    }
+
     await storage.initialize();
     logger.info('Storage initialized successfully');
 

@@ -1,0 +1,128 @@
+/**
+ * Convex Database Schema
+ *
+ * Defines the schema for all NDIS management entities.
+ */
+
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
+
+export default defineSchema({
+  /**
+   * Clients (NDIS Participants)
+   */
+  clients: defineTable({
+    name: v.string(),
+    date_of_birth: v.string(),
+    ndis_number: v.optional(v.string()),
+    primary_contact: v.optional(v.string()),
+    support_notes: v.optional(v.string()),
+    active: v.boolean(),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index('by_active', ['active'])
+    .index('by_ndis_number', ['ndis_number'])
+    .index('by_created_at', ['created_at']),
+
+  /**
+   * Goals
+   */
+  goals: defineTable({
+    client_id: v.id('clients'),
+    title: v.string(),
+    description: v.optional(v.string()),
+    category: v.string(),
+    target_date: v.string(),
+    status: v.string(),
+    progress_percentage: v.number(),
+    milestones: v.optional(v.array(v.string())),
+    created_at: v.string(),
+    updated_at: v.string(),
+    achieved_at: v.union(v.string(), v.null()),
+    archived: v.boolean(),
+  }).index('by_client', ['client_id'])
+    .index('by_status', ['status'])
+    .index('by_archived', ['archived'])
+    .index('by_category', ['category'])
+    .index('by_target_date', ['target_date']),
+
+  /**
+   * Activities
+   */
+  activities: defineTable({
+    client_id: v.id('clients'),
+    stakeholder_id: v.id('stakeholders'),
+    title: v.string(),
+    description: v.optional(v.string()),
+    activity_type: v.string(),
+    activity_date: v.string(),
+    start_time: v.optional(v.string()),
+    end_time: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    status: v.string(),
+    goal_ids: v.optional(v.array(v.id('goals'))),
+    outcome_notes: v.optional(v.string()),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index('by_client', ['client_id'])
+    .index('by_stakeholder', ['stakeholder_id'])
+    .index('by_activity_date', ['activity_date'])
+    .index('by_status', ['status'])
+    .index('by_type', ['activity_type']),
+
+  /**
+   * Stakeholders (Support Workers, Coordinators, etc.)
+   */
+  stakeholders: defineTable({
+    name: v.string(),
+    role: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    organization: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    active: v.boolean(),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index('by_active', ['active'])
+    .index('by_role', ['role'])
+    .index('by_name', ['name']),
+
+  /**
+   * Shift Notes
+   */
+  shift_notes: defineTable({
+    client_id: v.id('clients'),
+    stakeholder_id: v.id('stakeholders'),
+    shift_date: v.string(),
+    start_time: v.string(),
+    end_time: v.string(),
+    general_observations: v.string(),
+    activity_ids: v.optional(v.array(v.id('activities'))),
+    goals_progress: v.optional(
+      v.array(
+        v.object({
+          goal_id: v.id('goals'),
+          progress_notes: v.string(),
+          progress_observed: v.number(),
+        })
+      )
+    ),
+    mood_wellbeing: v.optional(v.string()),
+    communication_notes: v.optional(v.string()),
+    health_safety_notes: v.optional(v.string()),
+    handover_notes: v.optional(v.string()),
+    incidents: v.optional(
+      v.array(
+        v.object({
+          description: v.string(),
+          action_taken: v.string(),
+          severity: v.string(),
+        })
+      )
+    ),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index('by_client', ['client_id'])
+    .index('by_stakeholder', ['stakeholder_id'])
+    .index('by_shift_date', ['shift_date']),
+});

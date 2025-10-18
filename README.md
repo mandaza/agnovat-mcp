@@ -192,14 +192,27 @@ Guided workflows:
 
 ### Environment Variables
 
+- `STORAGE_TYPE`: Storage backend type (`json` or `convex`, default: `json`)
 - `DATA_DIR`: Directory for JSON data storage (default: `./data`)
+- `CONVEX_URL`: Convex deployment URL (required if `STORAGE_TYPE=convex`)
 
-### Data Storage
+### Data Storage Options
 
-- JSON files with atomic writes
+#### JSON File Storage (Default)
+- Local file-based storage
+- Atomic writes to prevent corruption
 - File locking for concurrent access
 - In-memory caching for performance
 - Daily automated backups to `data/backups/`
+
+#### Convex Database (Optional)
+- Cloud-based real-time database
+- Automatic scaling and replication
+- Built-in authentication and file storage
+- Type-safe with generated TypeScript types
+- Free tier available for development
+
+**See [CONVEX_SETUP.md](./CONVEX_SETUP.md) for detailed Convex integration guide.**
 
 ## Example Usage
 
