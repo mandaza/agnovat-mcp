@@ -109,7 +109,7 @@ The MCP server can be tested with AI applications like Claude Desktop without ne
   "mcpServers": {
     "agnovat": {
       "command": "node",
-      "args": ["/absolute/path/to/agnovat-mcp/build/index.js"],
+      "args": ["/absolute/path/to/agnovat-mcp/dist/index.js"],
       "env": {
         "STORAGE_TYPE": "json",
         "DATA_DIR": "/absolute/path/to/agnovat-mcp/data"

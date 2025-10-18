@@ -47,7 +47,7 @@ Edit the configuration file to add your server:
     "agnovat": {
       "command": "node",
       "args": [
-        "/Users/mandaza/Documents/Project/agnovat-mcp/build/index.js"
+        "/Users/mandaza/Documents/Project/agnovat-mcp/dist/index.js"
       ],
       "env": {
         "STORAGE_TYPE": "json",
@@ -65,7 +65,7 @@ Edit the configuration file to add your server:
     "agnovat": {
       "command": "node",
       "args": [
-        "/Users/mandaza/Documents/Project/agnovat-mcp/build/index.js"
+        "/Users/mandaza/Documents/Project/agnovat-mcp/dist/index.js"
       ],
       "env": {
         "STORAGE_TYPE": "convex",
@@ -175,7 +175,7 @@ npm install -g @modelcontextprotocol/inspector
 ```bash
 # Start your MCP server
 cd /Users/mandaza/Documents/Project/agnovat-mcp
-STORAGE_TYPE=json DATA_DIR=./data mcp-inspector build/index.js
+STORAGE_TYPE=json DATA_DIR=./data mcp-inspector dist/index.js
 ```
 
 This opens a web interface where you can:
@@ -265,7 +265,7 @@ tail -f ~/Library/Logs/Claude/mcp*.log
 ```
 
 **Common Issues**:
-1. **Wrong path**: Verify the absolute path to `build/index.js`
+1. **Wrong path**: Verify the absolute path to `dist/index.js` (not `build/`)
 2. **Build not updated**: Run `npm run build` again
 3. **Environment variables**: Check STORAGE_TYPE and paths
 4. **Node version**: Ensure Node.js 18+ is installed
@@ -274,7 +274,7 @@ tail -f ~/Library/Logs/Claude/mcp*.log
 
 **Verify server starts**:
 ```bash
-node build/index.js
+node dist/index.js
 ```
 
 Should see:
