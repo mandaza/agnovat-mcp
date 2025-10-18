@@ -4,9 +4,10 @@
  * Centralized export for all data models and type definitions.
  */
 
-// Model exports will be added as they are implemented
-// export * from './client';
-// export * from './goal';
-// export * from './activity';
-// export * from './shift-note';
-// export * from './stakeholder';
+export * from './enums.js';
+export * from './client.js';
+export * from './goal.js';
+export * from './activity.js';
+export * from './shift-note.js';
+export * from './stakeholder.js';
+export * from './dashboard.js';
