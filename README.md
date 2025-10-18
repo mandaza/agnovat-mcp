@@ -87,6 +87,41 @@ npm run dev
 - `npm run format` - Format code with Prettier
 - `npm run type-check` - Check TypeScript types without emitting
 
+## Testing the MCP Server
+
+The MCP server can be tested with AI applications like Claude Desktop without needing a frontend.
+
+**See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for complete testing instructions**, including:
+- Claude Desktop configuration and setup
+- Interactive testing with natural language
+- MCP Inspector for debugging
+- Testing all 32 tools, 6 resources, and 6 prompts
+- Performance testing and production readiness checklist
+
+### Quick Start with Claude Desktop
+
+1. Install [Claude Desktop](https://claude.ai/download)
+2. Build the project: `npm run build`
+3. Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "agnovat": {
+      "command": "node",
+      "args": ["/absolute/path/to/agnovat-mcp/build/index.js"],
+      "env": {
+        "STORAGE_TYPE": "json",
+        "DATA_DIR": "/absolute/path/to/agnovat-mcp/data"
+      }
+    }
+  }
+}
+```
+
+4. Restart Claude Desktop
+5. Start testing: "Can you create a new NDIS client for me?"
+
 ## MCP Tools (32 Total)
 
 ### Client Tools (6)
