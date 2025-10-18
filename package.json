@@ -1,5 +1,5 @@
 {
-  "name": "ndis-mcp-server",
+  "name": "agnovat-mcp-server",
   "version": "1.0.0",
   "description": "NDIS Management MCP Server - MVP for participant support management",
   "main": "dist/index.js",

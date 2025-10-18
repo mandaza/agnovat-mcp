@@ -1,5 +1,5 @@
 /**
- * NDIS Management MCP Server
+ * Agnovat MCP Server
  *
  * Main entry point for the MCP server.
  * Handles initialization and server lifecycle.

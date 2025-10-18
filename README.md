@@ -1,7 +1,7 @@
-# NDIS Management MCP Server
+# Agnovat MCP Server
 
 **Version:** 1.0.0 MVP
-**Project Code:** NDIS-MCP-MVP
+**Project Code:** AGNOVAT-MCP-MVP
 **Status:** In Development (Phase 1)
 
 ## Overview
@@ -33,7 +33,7 @@ Build a scalable MCP server for NDIS participant support management that reduces
 ## Project Structure
 
 ```
-ndis-mcp-server/
+agnovat-mcp-server/
 ├── src/
 │   ├── index.ts              # MCP server entry point
 │   ├── tools/                # MCP tool implementations
