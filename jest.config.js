@@ -11,6 +11,7 @@ export default {
       'ts-jest',
       {
         useESM: true,
+        isolatedModules: true,
       },
     ],
   },
@@ -32,6 +33,11 @@ export default {
     },
   },
   coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  // setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
   verbose: true,
   testTimeout: 10000,
 };
