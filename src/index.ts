@@ -7,6 +7,9 @@
  * @module index
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { JsonStorage } from './storage/json-storage.js';
@@ -23,6 +26,14 @@ import { ApplicationError } from './utils/errors.js';
  */
 async function main(): Promise<void> {
   try {
+    // Redirect console methods to stderr to avoid interfering with JSON-RPC on stdout
+    // MCP servers use stdio for JSON-RPC, so console.* must go to stderr
+    console.log = (...args) => process.stderr.write(args.join(' ') + '\n');
+    console.info = (...args) => process.stderr.write('[INFO] ' + args.join(' ') + '\n');
+    console.warn = (...args) => process.stderr.write('[WARN] ' + args.join(' ') + '\n');
+    console.error = (...args) => process.stderr.write('[ERROR] ' + args.join(' ') + '\n');
+    console.debug = (...args) => process.stderr.write('[DEBUG] ' + args.join(' ') + '\n');
+
     // Initialize storage based on environment
     const storageType = process.env['STORAGE_TYPE'] || 'json';
     let storage: StorageProvider;

@@ -9,9 +9,6 @@ import { StorageProvider } from './base.js';
 import { CollectionName, Filter, QueryOptions } from './types.js';
 import { api } from '../../convex/_generated/api.js';
 
-// Type for Convex IDs
-type ConvexId = string;
-
 export interface ConvexStorageConfig {
   /** Convex deployment URL */
   deploymentUrl: string;
@@ -38,8 +35,8 @@ export class ConvexStorage implements StorageProvider {
     id: string
   ): Promise<T | null> {
     try {
-      const record = await this.client.query(api.queries['getById'], {
-        id: id as ConvexId, // Type cast for Convex ID
+      const record = await this.client.query(api.queries.getById, {
+        id: id as any, // Type cast for Convex ID
       });
 
       if (!record) return null;
@@ -48,7 +45,7 @@ export class ConvexStorage implements StorageProvider {
       return {
         ...record,
         id: record._id,
-      } as T;
+      } as any as T;
     } catch (error) {
       console.error(`Error reading from ${collection}:`, error);
       return null;
@@ -63,9 +60,9 @@ export class ConvexStorage implements StorageProvider {
 
     // Check if record exists
     const existing = await this.read(collection, id);
-    const convexId = existing ? (id as ConvexId) : undefined;
+    const convexId = existing ? (id as any) : undefined;
 
-    await this.client.mutation(api.mutations['upsert'], {
+    await this.client.mutation(api.mutations.upsert, {
       table: collection,
       id: convexId,
       data,
@@ -74,8 +71,8 @@ export class ConvexStorage implements StorageProvider {
 
   async delete(collection: CollectionName, id: string): Promise<boolean> {
     try {
-      await this.client.mutation(api.mutations['deleteRecord'], {
-        id: id as ConvexId,
+      await this.client.mutation(api.mutations.deleteRecord, {
+        id: id as any,
       });
       return true;
     } catch (error) {
@@ -90,7 +87,7 @@ export class ConvexStorage implements StorageProvider {
     options?: QueryOptions
   ): Promise<T[]> {
     try {
-      const records = await this.client.query(api.queries['list'], {
+      const records = await this.client.query(api.queries.list, {
         table: collection,
         filter: filter as any,
         limit: options?.limit,
@@ -110,7 +107,7 @@ export class ConvexStorage implements StorageProvider {
 
   async count(collection: CollectionName, filter?: Filter<unknown>): Promise<number> {
     try {
-      return await this.client.query(api.queries['count'], {
+      return await this.client.query(api.queries.count, {
         table: collection,
         filter: filter as any,
       });
@@ -122,8 +119,8 @@ export class ConvexStorage implements StorageProvider {
 
   async exists(collection: CollectionName, id: string): Promise<boolean> {
     try {
-      return await this.client.query(api.queries['exists'], {
-        id: id as ConvexId,
+      return await this.client.query(api.queries.exists, {
+        id: id as any,
       });
     } catch (error) {
       console.error(`Error checking existence in ${collection}:`, error);
@@ -132,7 +129,7 @@ export class ConvexStorage implements StorageProvider {
   }
 
   async clear(collection: CollectionName): Promise<void> {
-    await this.client.mutation(api.mutations['clearTable'], {
+    await this.client.mutation(api.mutations.clearTable, {
       table: collection,
     });
   }
@@ -142,7 +139,7 @@ export class ConvexStorage implements StorageProvider {
     records_by_collection: Record<CollectionName, number>;
   }> {
     try {
-      const stats = await this.client.query(api.queries['getStats'], {});
+      const stats = await this.client.query(api.queries.getStats, {});
       return stats as {
         total_records: number;
         records_by_collection: Record<CollectionName, number>;

@@ -178,7 +178,7 @@ export class Logger {
    */
   private outputToConsole(entry: LogEntry): void {
     const { timestamp, level, message, context, error } = entry;
-    const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+    const contextStr = context ? ` ${this.safeStringify(context)}` : '';
     const errorStr = error ? ` [${error.name}: ${error.message}]` : '';
     const logMessage = `[${timestamp}] ${level}: ${message}${contextStr}${errorStr}`;
 
@@ -199,6 +199,33 @@ export class Logger {
         }
         break;
     }
+  }
+
+  /**
+   * Safely stringify objects, handling circular references and errors
+   */
+  private safeStringify(obj: unknown): string {
+    try {
+      return JSON.stringify(obj, this.getCircularReplacer());
+    } catch (error) {
+      return '[Unable to stringify]';
+    }
+  }
+
+  /**
+   * Replacer function to handle circular references in JSON.stringify
+   */
+  private getCircularReplacer(): (key: string, value: unknown) => unknown {
+    const seen = new WeakSet();
+    return (_key: string, value: unknown): unknown => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    };
   }
 
   /**

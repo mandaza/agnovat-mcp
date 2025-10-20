@@ -657,6 +657,30 @@ const toolHandlers: Record<string, (storage: StorageProvider, args: unknown) => 
 };
 
 /**
+ * Safely stringify data for JSON-RPC transport
+ * Handles circular references and ensures valid JSON
+ */
+function safeStringify(data: unknown): string {
+  try {
+    const seen = new WeakSet();
+    const replacer = (_key: string, value: unknown): unknown => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+
+    return JSON.stringify(data, replacer, 2);
+  } catch (error) {
+    // Fallback: return a simple error object
+    return JSON.stringify({ error: 'Unable to serialize result' }, null, 2);
+  }
+}
+
+/**
  * Register all tools with the MCP server
  *
  * @param server - MCP server instance
@@ -685,7 +709,7 @@ export function registerTools(server: Server, storage: StorageProvider): void {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result, null, 2),
+            text: safeStringify(result),
           },
         ],
       };
@@ -710,14 +734,10 @@ export function registerTools(server: Server, storage: StorageProvider): void {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                error: errorMessage,
-                code: errorCode,
-              },
-              null,
-              2
-            ),
+            text: safeStringify({
+              error: errorMessage,
+              code: errorCode,
+            }),
           },
         ],
         isError: true,
