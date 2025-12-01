@@ -83,15 +83,13 @@ export interface UpdateClientInput {
  * @extends Client
  * @property {number} total_goals - Total number of goals
  * @property {number} active_goals - Number of active (not achieved/discontinued) goals
- * @property {number} total_activities - Total number of activities
- * @property {string} [last_activity_date] - Date of most recent activity (ISO 8601)
+ * @property {number} total_activities - Total number of activities in pool
  * @property {string} [last_shift_note_date] - Date of most recent shift note (ISO 8601)
  */
 export interface ClientWithStats extends Client {
   total_goals: number;
   active_goals: number;
   total_activities: number;
-  last_activity_date?: string;
   last_shift_note_date?: string;
 }
 

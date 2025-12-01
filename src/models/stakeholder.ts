@@ -85,17 +85,16 @@ export interface UpdateStakeholderInput {
  * Stakeholder with activity summary
  *
  * Extended stakeholder information including activity statistics.
+ * Note: Activities no longer have dates - they are a pool/catalog.
  *
  * @interface StakeholderWithStats
  * @extends Stakeholder
  * @property {number} total_activities - Total number of activities conducted
  * @property {number} total_shift_notes - Total number of shift notes
- * @property {string} [last_activity_date] - Date of most recent activity (ISO 8601)
  */
 export interface StakeholderWithStats extends Stakeholder {
   total_activities: number;
   total_shift_notes: number;
-  last_activity_date?: string;
 }
 
 /**

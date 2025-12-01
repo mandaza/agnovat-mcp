@@ -12,7 +12,7 @@ import { v } from 'convex/values';
  */
 export const getById = query({
   args: {
-    id: v.id('clients'), // Generic ID
+    id: v.string(), // Accept any Convex ID as string
   },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id as any);
@@ -91,7 +91,7 @@ export const count = query({
  */
 export const exists = query({
   args: {
-    id: v.id('clients'), // Generic ID
+    id: v.string(), // Accept any Convex ID as string
   },
   handler: async (ctx, args) => {
     const record = await ctx.db.get(args.id as any);

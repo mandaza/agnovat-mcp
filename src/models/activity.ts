@@ -10,19 +10,18 @@
 import { ActivityType, ActivityStatus } from './enums.js';
 
 /**
- * Activity entity representing a support activity
+ * Activity entity representing a support activity (catalog/pool)
+ *
+ * Note: Activities are now a pool/catalog. Scheduling with dates/times
+ * will be handled separately in a future scheduling system.
  *
  * @interface Activity
- * @property {string} id - Unique identifier (UUID v4)
+ * @property {string} id - Unique identifier (UUID v4 or Convex ID)
  * @property {string} client_id - ID of the client
- * @property {string} stakeholder_id - ID of the stakeholder who conducted the activity
+ * @property {string} stakeholder_id - ID of the stakeholder who conducts this activity
  * @property {string} title - Short title of the activity
  * @property {string} [description] - Detailed description (optional)
  * @property {ActivityType} activity_type - Type of activity
- * @property {string} activity_date - Date of the activity (ISO 8601)
- * @property {string} [start_time] - Start time (HH:MM format, optional)
- * @property {string} [end_time] - End time (HH:MM format, optional)
- * @property {number} [duration_minutes] - Duration in minutes (optional)
  * @property {ActivityStatus} status - Status of the activity
  * @property {string[]} [goal_ids] - Array of goal IDs this activity relates to
  * @property {string} [outcome_notes] - Notes about outcomes and observations
@@ -36,10 +35,6 @@ export interface Activity {
   title: string;
   description?: string;
   activity_type: ActivityType;
-  activity_date: string;
-  start_time?: string;
-  end_time?: string;
-  duration_minutes?: number;
   status: ActivityStatus;
   goal_ids?: string[];
   outcome_notes?: string;
@@ -56,11 +51,7 @@ export interface Activity {
  * @property {string} title - Activity title (required)
  * @property {string} [description] - Activity description (optional)
  * @property {ActivityType} activity_type - Type of activity (required)
- * @property {string} activity_date - Date of activity (required)
- * @property {string} [start_time] - Start time (optional)
- * @property {string} [end_time] - End time (optional)
- * @property {number} [duration_minutes] - Duration in minutes (optional)
- * @property {ActivityStatus} [status] - Activity status (defaults to scheduled)
+ * @property {ActivityStatus} [status] - Activity status (optional)
  * @property {string[]} [goal_ids] - Related goal IDs (optional)
  * @property {string} [outcome_notes] - Outcome notes (optional)
  */
@@ -70,10 +61,6 @@ export interface CreateActivityInput {
   title: string;
   description?: string;
   activity_type: ActivityType;
-  activity_date: string;
-  start_time?: string;
-  end_time?: string;
-  duration_minutes?: number;
   status?: ActivityStatus;
   goal_ids?: string[];
   outcome_notes?: string;
@@ -88,10 +75,6 @@ export interface CreateActivityInput {
  * @property {string} [title] - Updated title
  * @property {string} [description] - Updated description
  * @property {ActivityType} [activity_type] - Updated activity type
- * @property {string} [activity_date] - Updated activity date
- * @property {string} [start_time] - Updated start time
- * @property {string} [end_time] - Updated end time
- * @property {number} [duration_minutes] - Updated duration
  * @property {ActivityStatus} [status] - Updated status
  * @property {string[]} [goal_ids] - Updated goal IDs
  * @property {string} [outcome_notes] - Updated outcome notes
@@ -100,10 +83,6 @@ export interface UpdateActivityInput {
   title?: string;
   description?: string;
   activity_type?: ActivityType;
-  activity_date?: string;
-  start_time?: string;
-  end_time?: string;
-  duration_minutes?: number;
   status?: ActivityStatus;
   goal_ids?: string[];
   outcome_notes?: string;
@@ -135,8 +114,6 @@ export interface ActivityWithDetails extends Activity {
  * @property {string} [goal_id] - Filter by goal ID
  * @property {ActivityType} [activity_type] - Filter by activity type
  * @property {ActivityStatus} [status] - Filter by status
- * @property {string} [date_from] - Filter activities from this date (ISO 8601)
- * @property {string} [date_to] - Filter activities to this date (ISO 8601)
  * @property {number} [limit] - Maximum number of results
  * @property {number} [offset] - Number of results to skip
  */
@@ -146,8 +123,6 @@ export interface ActivityListFilter {
   goal_id?: string;
   activity_type?: ActivityType;
   status?: ActivityStatus;
-  date_from?: string;
-  date_to?: string;
   limit?: number;
   offset?: number;
 }

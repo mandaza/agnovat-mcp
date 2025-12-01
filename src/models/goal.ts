@@ -37,7 +37,7 @@ export interface Goal {
   progress_percentage: number;
   created_at: string;
   updated_at: string;
-  achieved_at?: string;
+  achieved_at?: string | null;
   archived: boolean;
 }
 
@@ -103,15 +103,14 @@ export interface UpdateGoalInput {
  * Goal with linked activities
  *
  * Extended goal information including associated activities.
+ * Note: Activities no longer have dates.
  *
  * @interface GoalWithActivities
  * @extends Goal
  * @property {number} activity_count - Number of linked activities
- * @property {string} [last_activity_date] - Date of most recent activity (ISO 8601)
  */
 export interface GoalWithActivities extends Goal {
   activity_count: number;
-  last_activity_date?: string;
 }
 
 /**

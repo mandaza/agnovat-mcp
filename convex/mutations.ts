@@ -13,7 +13,18 @@ import { v } from 'convex/values';
 export const upsert = mutation({
   args: {
     table: v.string(),
-    id: v.optional(v.id('clients')), // Using a generic ID type
+    // Accept IDs from any table using v.union of all possible table IDs
+    id: v.optional(
+      v.union(
+        v.id('clients'),
+        v.id('goals'),
+        v.id('activities'),
+        v.id('stakeholders'),
+        v.id('shift_notes'),
+        v.id('users'),
+        v.id('audit_logs')
+      )
+    ),
     data: v.any(),
   },
   handler: async (ctx, args) => {
@@ -36,7 +47,16 @@ export const upsert = mutation({
  */
 export const deleteRecord = mutation({
   args: {
-    id: v.id('clients'), // Generic ID
+    // Accept IDs from any table
+    id: v.union(
+      v.id('clients'),
+      v.id('goals'),
+      v.id('activities'),
+      v.id('stakeholders'),
+      v.id('shift_notes'),
+      v.id('users'),
+      v.id('audit_logs')
+    ),
   },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id as any);

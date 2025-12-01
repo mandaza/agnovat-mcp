@@ -8,7 +8,10 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ListPromptsRequestSchema, GetPromptRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { StorageProvider } from '../storage/index.js';
 import { logger } from '../utils/logger.js';
 import { ApplicationError } from '../utils/errors.js';
@@ -30,7 +33,7 @@ const promptTemplates = [
   },
   {
     name: 'review_client_progress',
-    description: 'Review a client\'s progress across all goals with recent activities',
+    description: "Review a client's progress across all goals with recent activities",
     arguments: [
       {
         name: 'client_id',
@@ -271,12 +274,12 @@ Use get_dashboard to get at-risk goals, then get details for each goal, its clie
  */
 export function registerPrompts(server: Server, _storage: StorageProvider): void {
   // List prompts handler
-  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+  server.setRequestHandler(ListPromptsRequestSchema, () => ({
     prompts: promptTemplates,
   }));
 
   // Get prompt handler
-  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  server.setRequestHandler(GetPromptRequestSchema, (request) => {
     const { name, arguments: args } = request.params;
 
     try {

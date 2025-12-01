@@ -88,12 +88,6 @@ export async function getStakeholder(
     stakeholder_id: stakeholderId,
   } as Partial<Activity>);
 
-  // Get last activity date
-  const sortedActivities = activities.sort((a, b) =>
-    b.activity_date.localeCompare(a.activity_date)
-  );
-  const lastActivityDate = sortedActivities[0]?.activity_date;
-
   // Get shift notes for this stakeholder
   const shiftNotes = await storage.list<ShiftNote>('shift_notes', {
     stakeholder_id: stakeholderId,
@@ -104,7 +98,6 @@ export async function getStakeholder(
     ...stakeholder,
     total_activities: activities.length,
     total_shift_notes: shiftNotes.length,
-    last_activity_date: lastActivityDate,
   };
 
   return stakeholderWithStats;

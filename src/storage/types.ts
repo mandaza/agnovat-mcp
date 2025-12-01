@@ -9,7 +9,14 @@
 /**
  * Collection names for different entity types
  */
-export type CollectionName = 'clients' | 'goals' | 'activities' | 'shift_notes' | 'stakeholders';
+export type CollectionName =
+  | 'clients'
+  | 'goals'
+  | 'activities'
+  | 'activity_sessions'
+  | 'shift_notes'
+  | 'stakeholders'
+  | 'behavior_incidents';
 
 /**
  * Generic filter type for querying collections

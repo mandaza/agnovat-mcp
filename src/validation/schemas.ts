@@ -21,9 +21,29 @@ import {
 // ============================================================================
 
 /**
- * UUID v4 pattern validation
+ * UUID v4 pattern validation (for JSON storage)
  */
-const uuidSchema = z.string().uuid('Invalid UUID format').describe('UUID v4 identifier');
+const uuidV4Pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Convex ID pattern validation (for Convex storage)
+ * Convex IDs are 32 lowercase alphanumeric characters
+ */
+const convexIdPattern = /^[a-z0-9]{32}$/;
+
+/**
+ * Flexible ID schema that accepts both UUID v4 and Convex ID formats
+ * This allows the system to work with both JSON and Convex storage backends
+ */
+const uuidSchema = z
+  .string()
+  .refine(
+    (id) => uuidV4Pattern.test(id) || convexIdPattern.test(id),
+    {
+      message: 'ID must be either a valid UUID v4 or Convex ID format',
+    }
+  )
+  .describe('Entity identifier (UUID v4 or Convex ID)');
 
 /**
  * ISO 8601 date string (YYYY-MM-DD)
@@ -88,6 +108,84 @@ export const goalCategorySchema = z.nativeEnum(GoalCategory);
 export const activityTypeSchema = z.nativeEnum(ActivityType);
 export const activityStatusSchema = z.nativeEnum(ActivityStatus);
 export const stakeholderRoleSchema = z.nativeEnum(StakeholderRole);
+
+// Behavior Incident Enums
+export const incidentLocationSchema = z.enum([
+  'in_the_home',
+  'in_the_community',
+  'in_the_car',
+  'at_restaurant',
+  'in_the_neighborhood',
+  'other',
+] as const);
+
+export const activityBeforeSchema = z.enum([
+  'activity_outdoors',
+  'activity_indoors',
+  'unstructured_time',
+  'transitioning',
+  'waiting',
+  'structured_activity',
+  'other',
+] as const);
+
+export const behaviorTypeSchema = z.enum([
+  'verbal_aggression',
+  'physical_aggression',
+  'wandering',
+  'withdrawal',
+  'harm_to_self',
+  'damage_to_property',
+  'inappropriate_touching',
+  'public_masturbation',
+  'shared_lie_or_fiction',
+  'risk_of_safety',
+  'leaving_home_unsupervised',
+  'moving_neighbors_bins',
+  'approaching_neighbors_house',
+  'attempting_to_kiss_touch',
+  'other',
+] as const);
+
+export const behaviorDurationSchema = z.enum([
+  '0_5_minutes',
+  '6_10_minutes',
+  '11_15_minutes',
+  '16_30_minutes',
+  'over_30_minutes',
+  'other',
+] as const);
+
+export const behaviorSeveritySchema = z.enum(['low', 'medium', 'high'] as const);
+
+export const behaviorIncidentStatusSchema = z.enum(['draft', 'submitted'] as const);
+
+export const selfHarmTypeSchema = z.enum([
+  'bite',
+  'scratch',
+  'hit_head',
+  'consuming_non_food',
+  'bang_head',
+  'no_harm',
+  'other',
+] as const);
+
+export const interventionTypeSchema = z.enum([
+  'verbal_redirection',
+  'escape_environment',
+  'deflection_with_body',
+  'distraction_with_items',
+  'no_intervention_required',
+  'other',
+] as const);
+
+export const secondSupportReasonSchema = z.enum([
+  'ensure_safety',
+  'prevent_harm_to_others',
+  'manage_transitions',
+  'all',
+  'no_additional_support_needed',
+] as const);
 
 // ============================================================================
 // Client Schemas
@@ -194,11 +292,7 @@ export const createActivitySchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
   description: z.string().max(2000).optional(),
   activity_type: activityTypeSchema,
-  activity_date: dateSchema,
-  start_time: timeSchema.optional(),
-  end_time: timeSchema.optional(),
-  duration_minutes: z.number().int().min(1).max(1440).optional(),
-  status: activityStatusSchema.default(ActivityStatus.SCHEDULED),
+  status: activityStatusSchema.optional(),
   goal_ids: z.array(uuidSchema).optional(),
   outcome_notes: z.string().max(2000).optional(),
 });
@@ -207,10 +301,6 @@ export const updateActivitySchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).optional(),
   activity_type: activityTypeSchema.optional(),
-  activity_date: dateSchema.optional(),
-  start_time: timeSchema.optional(),
-  end_time: timeSchema.optional(),
-  duration_minutes: z.number().int().min(1).max(1440).optional(),
   status: activityStatusSchema.optional(),
   goal_ids: z.array(uuidSchema).optional(),
   outcome_notes: z.string().max(2000).optional(),
@@ -222,8 +312,6 @@ export const activityListFilterSchema = z.object({
   goal_id: uuidSchema.optional(),
   activity_type: activityTypeSchema.optional(),
   status: activityStatusSchema.optional(),
-  date_from: dateSchema.optional(),
-  date_to: dateSchema.optional(),
   limit: z.number().int().min(1).max(100).default(20).optional(),
   offset: z.number().int().min(0).default(0).optional(),
 });
@@ -263,38 +351,136 @@ export const stakeholderListFilterSchema = z.object({
 // Shift Note Schemas
 // ============================================================================
 
-export const createShiftNoteSchema = z.object({
-  client_id: uuidSchema,
-  stakeholder_id: uuidSchema,
-  shift_date: dateSchema,
-  start_time: timeSchema,
-  end_time: timeSchema,
-  general_observations: z.string().min(1, 'General observations are required').max(5000),
-  activity_ids: z.array(uuidSchema).optional(),
-  goals_progress: z.array(goalProgressSchema).optional(),
-  mood_wellbeing: z.string().max(2000).optional(),
-  communication_notes: z.string().max(2000).optional(),
-  health_safety_notes: z.string().max(2000).optional(),
-  handover_notes: z.string().max(2000).optional(),
-  incidents: z.string().max(2000).optional(),
-});
+// Client Mood Schema (must be defined before use in shift note schemas)
+export const clientMoodSchema = z.enum([
+  'positive',
+  'neutral',
+  'negative',
+  'mixed',
+  'anxious',
+  'withdrawn',
+] as const);
+
+export const createShiftNoteSchema = z
+  .object({
+    client_id: uuidSchema,
+    user_id: uuidSchema,
+    shift_date: dateSchema,
+    start_time: timeSchema,
+    end_time: timeSchema,
+    primary_locations: z.array(z.string().min(1).max(200)).optional(),
+
+    // NEW: Hybrid approach fields
+    activity_session_ids: z.array(uuidSchema).optional().default([]),
+    behavior_incident_ids: z.array(uuidSchema).optional().default([]),
+    overall_notes: z.string().min(1).max(10000).optional(),
+    client_mood: clientMoodSchema.optional(),
+    notable_achievements: z.string().max(2000).optional(),
+    concerns_raised: z.string().max(2000).optional(),
+
+    // LEGACY: For backward compatibility
+    raw_notes: z.string().min(1).max(10000).optional(),
+    activity_ids: z.array(uuidSchema).optional(),
+    goals_progress: z.array(goalProgressSchema).optional(),
+  })
+  .refine(
+    (data) => data.overall_notes || data.raw_notes,
+    {
+      message: 'Either overall_notes or raw_notes must be provided',
+      path: ['overall_notes'],
+    }
+  );
 
 export const updateShiftNoteSchema = z.object({
-  general_observations: z.string().min(1).max(5000).optional(),
+  primary_locations: z.array(z.string().min(1).max(200)).optional(),
+
+  // NEW: Hybrid approach fields
+  activity_session_ids: z.array(uuidSchema).optional(),
+  behavior_incident_ids: z.array(uuidSchema).optional(),
+  overall_notes: z.string().min(1).max(10000).optional(),
+  client_mood: clientMoodSchema.optional(),
+  notable_achievements: z.string().max(2000).optional(),
+  concerns_raised: z.string().max(2000).optional(),
+
+  // LEGACY: For backward compatibility
+  raw_notes: z.string().min(1).max(10000).optional(),
   activity_ids: z.array(uuidSchema).optional(),
   goals_progress: z.array(goalProgressSchema).optional(),
-  mood_wellbeing: z.string().max(2000).optional(),
-  communication_notes: z.string().max(2000).optional(),
-  health_safety_notes: z.string().max(2000).optional(),
-  handover_notes: z.string().max(2000).optional(),
-  incidents: z.string().max(2000).optional(),
 });
 
 export const shiftNoteListFilterSchema = z.object({
   client_id: uuidSchema.optional(),
-  stakeholder_id: uuidSchema.optional(),
+  user_id: uuidSchema.optional(),
   date_from: dateSchema.optional(),
   date_to: dateSchema.optional(),
+  limit: z.number().int().min(1).max(100).default(20).optional(),
+  offset: z.number().int().min(0).default(0).optional(),
+});
+
+// ============================================================================
+// Behavior Incident Schemas
+// ============================================================================
+
+export const createBehaviorIncidentSchema = z.object({
+  client_id: uuidSchema,
+  incident_date: dateSchema,
+  submitted_by: uuidSchema,
+  submitted_for: z.enum(['self', 'other']),
+  submitted_for_name: z.string().min(1).max(200).optional(),
+  location: incidentLocationSchema,
+  location_other: z.string().max(500).optional(),
+  activity_before: activityBeforeSchema,
+  activity_before_other: z.string().max(500).optional(),
+  behaviors_displayed: z.array(behaviorTypeSchema).min(1, 'At least one behavior must be selected'),
+  behaviors_other: z.string().max(500).optional(),
+  duration: behaviorDurationSchema,
+  duration_other: z.string().max(200).optional(),
+  severity: behaviorSeveritySchema,
+  self_harm_types: z.array(selfHarmTypeSchema).default([]),
+  self_harm_other: z.string().max(500).optional(),
+  self_harm_count: z.number().int().min(0).max(20).default(0),
+  initial_intervention: interventionTypeSchema,
+  intervention_description: z.string().max(1000).optional(),
+  second_support_needed: z.array(secondSupportReasonSchema).default([]),
+  second_support_description: z.string().max(1000).optional(),
+  detailed_description: z.string().min(1, 'Detailed description is required').max(10000),
+  status: behaviorIncidentStatusSchema.optional(),
+});
+
+export const updateBehaviorIncidentSchema = z.object({
+  incident_date: dateSchema.optional(),
+  submitted_by: uuidSchema.optional(),
+  submitted_for: z.enum(['self', 'other']).optional(),
+  submitted_for_name: z.string().min(1).max(200).optional(),
+  location: incidentLocationSchema.optional(),
+  location_other: z.string().max(500).optional(),
+  activity_before: activityBeforeSchema.optional(),
+  activity_before_other: z.string().max(500).optional(),
+  behaviors_displayed: z.array(behaviorTypeSchema).min(1).optional(),
+  behaviors_other: z.string().max(500).optional(),
+  duration: behaviorDurationSchema.optional(),
+  duration_other: z.string().max(200).optional(),
+  severity: behaviorSeveritySchema.optional(),
+  self_harm_types: z.array(selfHarmTypeSchema).optional(),
+  self_harm_other: z.string().max(500).optional(),
+  self_harm_count: z.number().int().min(0).max(20).optional(),
+  initial_intervention: interventionTypeSchema.optional(),
+  intervention_description: z.string().max(1000).optional(),
+  second_support_needed: z.array(secondSupportReasonSchema).optional(),
+  second_support_description: z.string().max(1000).optional(),
+  detailed_description: z.string().min(1).max(10000).optional(),
+  status: behaviorIncidentStatusSchema.optional(),
+});
+
+export const behaviorIncidentListFilterSchema = z.object({
+  client_id: uuidSchema.optional(),
+  date_from: dateSchema.optional(),
+  date_to: dateSchema.optional(),
+  severity: behaviorSeveritySchema.optional(),
+  location: incidentLocationSchema.optional(),
+  has_self_harm: z.boolean().optional(),
+  needs_second_support: z.boolean().optional(),
+  submitted_by: uuidSchema.optional(),
   limit: z.number().int().min(1).max(100).default(20).optional(),
   offset: z.number().int().min(0).default(0).optional(),
 });
@@ -324,3 +510,85 @@ export type StakeholderListFilter = z.infer<typeof stakeholderListFilterSchema>;
 export type CreateShiftNoteInput = z.infer<typeof createShiftNoteSchema>;
 export type UpdateShiftNoteInput = z.infer<typeof updateShiftNoteSchema>;
 export type ShiftNoteListFilter = z.infer<typeof shiftNoteListFilterSchema>;
+
+export type CreateBehaviorIncidentInput = z.infer<typeof createBehaviorIncidentSchema>;
+export type UpdateBehaviorIncidentInput = z.infer<typeof updateBehaviorIncidentSchema>;
+export type BehaviorIncidentListFilter = z.infer<typeof behaviorIncidentListFilterSchema>;
+
+// ============================================================================
+// Activity Session Schemas
+// ============================================================================
+
+/**
+ * Engagement rating (1-5 scale)
+ */
+const engagementRatingSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+]).describe('Participant engagement rating (1-5)');
+
+/**
+ * Goal progress entry within an activity session
+ */
+export const goalProgressEntrySchema = z.object({
+  goal_id: uuidSchema,
+  progress_observed: progressObservedSchema,
+  evidence_notes: z.string().min(1, 'Evidence notes are required').max(1000),
+});
+
+/**
+ * Schema for creating an activity session
+ */
+export const createActivitySessionSchema = z.object({
+  activity_id: uuidSchema,
+  client_id: uuidSchema,
+  stakeholder_id: uuidSchema,
+  shift_note_id: uuidSchema.optional(),
+  performed_at: z.string().datetime({ message: 'Must be a valid ISO 8601 datetime' }),
+  duration_minutes: z
+    .number()
+    .int()
+    .min(1, 'Duration must be at least 1 minute')
+    .max(480, 'Duration cannot exceed 8 hours'),
+  session_notes: z.string().min(1, 'Session notes are required').max(5000),
+  participant_engagement: engagementRatingSchema,
+  goal_progress: z.array(goalProgressEntrySchema).optional().default([]),
+  behavior_incident_ids: z.array(uuidSchema).optional().default([]),
+});
+
+/**
+ * Schema for updating an activity session
+ */
+export const updateActivitySessionSchema = z.object({
+  session_notes: z.string().min(1).max(5000).optional(),
+  participant_engagement: engagementRatingSchema.optional(),
+  goal_progress: z.array(goalProgressEntrySchema).optional(),
+  behavior_incident_ids: z.array(uuidSchema).optional(),
+  duration_minutes: z.number().int().min(1).max(480).optional(),
+});
+
+/**
+ * Schema for listing activity sessions
+ */
+export const activitySessionListFilterSchema = z.object({
+  client_id: uuidSchema.optional(),
+  activity_id: uuidSchema.optional(),
+  stakeholder_id: uuidSchema.optional(),
+  shift_note_id: uuidSchema.optional(),
+  goal_id: uuidSchema.optional(),
+  date_from: dateSchema.optional(),
+  date_to: dateSchema.optional(),
+  min_engagement: z.number().int().min(1).max(5).optional(),
+  limit: z.number().int().min(1).max(100).default(20).optional(),
+  offset: z.number().int().min(0).default(0).optional(),
+});
+
+// Type inference for Activity Session
+export type GoalProgressEntry = z.infer<typeof goalProgressEntrySchema>;
+export type CreateActivitySessionInput = z.infer<typeof createActivitySessionSchema>;
+export type UpdateActivitySessionInput = z.infer<typeof updateActivitySessionSchema>;
+export type ActivitySessionListFilter = z.infer<typeof activitySessionListFilterSchema>;
+export type ClientMood = z.infer<typeof clientMoodSchema>;

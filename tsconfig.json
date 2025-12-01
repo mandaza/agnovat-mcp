@@ -13,6 +13,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "removeComments": true,
+    "noEmit": false,
+    "emitDeclarationOnly": false,
 
     /* Interop Constraints */
     "esModuleInterop": true,
@@ -38,14 +40,21 @@
 
     /* Completeness */
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "incremental": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "tests"
-  ]
+    "tests",
+    "convex",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "transpileOnly": true
+  }
 }

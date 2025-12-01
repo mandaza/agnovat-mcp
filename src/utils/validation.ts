@@ -29,12 +29,12 @@ export function validateWithSchema<T>(schema: ZodSchema<T>, data: unknown): T {
     return schema.parse(data);
   } catch (error) {
     if (error instanceof ZodError) {
-      const firstError = error.errors[0];
-      const field = firstError?.path.join('.') || undefined;
+      const firstError = error.issues[0];
+      const field = firstError?.path.map(String).join('.') || undefined;
       const message = firstError?.message || 'Validation failed';
 
       throw new ValidationError(message, field, 'SCHEMA_VALIDATION_FAILED', {
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     throw error;
@@ -102,6 +102,27 @@ export function isValidEmail(email: string): boolean {
 export function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
+}
+
+/**
+ * Validate a Convex ID format
+ *
+ * @param id - Convex ID string to validate
+ * @returns True if valid Convex ID
+ */
+export function isValidConvexID(id: string): boolean {
+  const convexIdRegex = /^[a-z0-9]{32}$/;
+  return convexIdRegex.test(id);
+}
+
+/**
+ * Validate an ID (accepts both UUID v4 and Convex ID formats)
+ *
+ * @param id - ID string to validate
+ * @returns True if valid ID (either format)
+ */
+export function isValidID(id: string): boolean {
+  return isValidUUID(id) || isValidConvexID(id);
 }
 
 /**
@@ -276,8 +297,8 @@ export function formatValidationErrors(error: ZodError | ValidationError): {
   message: string;
 }[] {
   if (error instanceof ZodError) {
-    return error.errors.map((err) => ({
-      field: err.path.join('.'),
+    return error.issues.map((err) => ({
+      field: err.path.map(String).join('.'),
       message: err.message,
     }));
   }

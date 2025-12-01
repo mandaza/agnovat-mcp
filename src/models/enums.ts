@@ -149,3 +149,29 @@ export function isActivityStatus(value: string): value is ActivityStatus {
 export function isStakeholderRole(value: string): value is StakeholderRole {
   return Object.values(StakeholderRole).includes(value as StakeholderRole);
 }
+
+/**
+ * Client mood enumeration
+ * Tracks overall client mood during a shift or session
+ */
+export enum ClientMood {
+  /** Client was in a positive, happy mood */
+  POSITIVE = 'positive',
+  /** Client was in a neutral, calm mood */
+  NEUTRAL = 'neutral',
+  /** Client was in a negative, upset mood */
+  NEGATIVE = 'negative',
+  /** Client's mood varied throughout the shift */
+  MIXED = 'mixed',
+  /** Client appeared anxious or worried */
+  ANXIOUS = 'anxious',
+  /** Client was withdrawn or less communicative */
+  WITHDRAWN = 'withdrawn',
+}
+
+/**
+ * Type guard to check if a value is a valid ClientMood
+ */
+export function isClientMood(value: string): value is ClientMood {
+  return Object.values(ClientMood).includes(value as ClientMood);
+}

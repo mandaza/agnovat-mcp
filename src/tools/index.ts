@@ -10,3 +10,4 @@ export * from './activities.js';
 export * from './stakeholders.js';
 export * from './shift-notes.js';
 export * from './dashboard.js';
+export * from './behavior-incidents.js';

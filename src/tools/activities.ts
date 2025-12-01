@@ -28,8 +28,7 @@ import {
   ConflictError,
   validateWithSchema,
 } from '../utils/index.js';
-import { getCurrentTimestamp, calculateDurationMinutes } from '../utils/dates.js';
-import { validateActivityDuration } from '../validation/rules.js';
+import { getCurrentTimestamp } from '../utils/dates.js';
 
 /**
  * Create a new activity
@@ -91,27 +90,6 @@ export async function createActivity(storage: StorageProvider, input: unknown): 
     }
   }
 
-  // Validate duration if times are provided
-  if (data.start_time && data.end_time) {
-    const durationValidation = validateActivityDuration(
-      data.start_time,
-      data.end_time,
-      data.duration_minutes
-    );
-    if (!durationValidation.valid) {
-      throw new ValidationError(
-        durationValidation.message || 'Invalid duration',
-        'duration',
-        'INVALID_DURATION'
-      );
-    }
-
-    // Auto-calculate duration if not provided
-    if (!data.duration_minutes) {
-      data.duration_minutes = calculateDurationMinutes(data.start_time, data.end_time);
-    }
-  }
-
   // Create activity entity
   const now = getCurrentTimestamp();
   const activity: Activity = {
@@ -121,10 +99,6 @@ export async function createActivity(storage: StorageProvider, input: unknown): 
     title: data.title,
     description: data.description,
     activity_type: data.activity_type,
-    activity_date: data.activity_date,
-    start_time: data.start_time,
-    end_time: data.end_time,
-    duration_minutes: data.duration_minutes,
     status: data.status || ActivityStatus.SCHEDULED,
     goal_ids: data.goal_ids,
     outcome_notes: data.outcome_notes,
@@ -226,19 +200,11 @@ export async function listActivities(
 
   // Get activities
   let activities = await storage.list<Activity>('activities', storageFilter, {
-    sortBy: 'activity_date',
+    sortBy: 'created_at',
     sortOrder: 'desc',
     limit: validFilter.limit,
     offset: validFilter.offset,
   });
-
-  // Apply date range filter if provided
-  if (validFilter.date_from) {
-    activities = activities.filter((a) => a.activity_date >= validFilter.date_from!);
-  }
-  if (validFilter.date_to) {
-    activities = activities.filter((a) => a.activity_date <= validFilter.date_to!);
-  }
 
   // Apply goal filter if provided
   if (validFilter.goal_id) {
@@ -293,22 +259,6 @@ export async function updateActivity(
           { goal_id: goalId, client_id: activity.client_id }
         );
       }
-    }
-  }
-
-  // Validate duration if times are being updated
-  const newStartTime = data.start_time ?? activity.start_time;
-  const newEndTime = data.end_time ?? activity.end_time;
-  const newDuration = data.duration_minutes ?? activity.duration_minutes;
-
-  if (newStartTime && newEndTime) {
-    const durationValidation = validateActivityDuration(newStartTime, newEndTime, newDuration);
-    if (!durationValidation.valid) {
-      throw new ValidationError(
-        durationValidation.message || 'Invalid duration',
-        'duration',
-        'INVALID_DURATION'
-      );
     }
   }
 

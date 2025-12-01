@@ -18,6 +18,7 @@ import {
   Goal,
   Activity,
   ShiftNote,
+  BehaviorIncident,
   GoalStatus,
   ActivityStatus,
 } from '../models/index.js';
@@ -40,6 +41,7 @@ export async function getDashboard(storage: StorageProvider): Promise<Dashboard>
   const allGoals = await storage.list<Goal>('goals');
   const allActivities = await storage.list<Activity>('activities');
   const allShiftNotes = await storage.list<ShiftNote>('shift_notes');
+  const allBehaviorIncidents = await storage.list<BehaviorIncident>('behavior_incidents');
 
   // Calculate summary statistics
   const activeClients = allClients.filter((c) => c.active);
@@ -48,15 +50,13 @@ export async function getDashboard(storage: StorageProvider): Promise<Dashboard>
   // Get current week range
   const weekRange = getCurrentWeekRange();
 
-  // Activities this week
-  const activitiesThisWeek = allActivities.filter(
-    (a) => a.activity_date >= weekRange.start && a.activity_date <= weekRange.end
-  );
-
   // Shift notes this week
   const shiftNotesThisWeek = allShiftNotes.filter(
     (sn) => sn.shift_date >= weekRange.start && sn.shift_date <= weekRange.end
   );
+
+  // Note: Activities no longer have dates - count total in pool instead
+  const totalActivitiesInPool = allActivities.length;
 
   // Goals by status
   const goalsByStatus: GoalsByStatus = {
@@ -90,41 +90,33 @@ export async function getDashboard(storage: StorageProvider): Promise<Dashboard>
   // Goals at risk
   const goalsAtRisk = activeGoals.filter((g) => isGoalAtRisk(g));
 
+  // Behavior incidents - high severity this month
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0] || '';
+  const highSeverityThisMonth = allBehaviorIncidents.filter(
+    (bi) => bi.severity === 'high' && bi.incident_date >= thirtyDaysAgoStr
+  );
+
   // Summary
   const summary: DashboardSummary = {
     total_clients: allClients.length,
     active_clients: activeClients.length,
     total_active_goals: activeGoals.length,
-    activities_this_week: activitiesThisWeek.length,
+    total_activities_in_pool: totalActivitiesInPool,
     shift_notes_this_week: shiftNotesThisWeek.length,
     goals_by_status: goalsByStatus,
     goals_at_risk: goalsAtRisk.length,
+    total_behavior_incidents: allBehaviorIncidents.length,
+    high_severity_incidents_this_month: highSeverityThisMonth.length,
   };
 
-  // Recent activities (last 10)
+  // Recent activities (last 10 created)
   const recentActivities = [...allActivities]
-    .sort((a, b) => {
-      const dateCompare = b.activity_date.localeCompare(a.activity_date);
-      if (dateCompare !== 0) return dateCompare;
-      return b.created_at.localeCompare(a.created_at);
-    })
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 10);
 
-  // Upcoming activities (next 7 days, scheduled)
-  const today = new Date().toISOString().split('T')[0];
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + 7);
-  const futureDateStr = futureDate.toISOString().split('T')[0];
-
-  const upcomingActivities = allActivities
-    .filter(
-      (a) =>
-        a.status === ActivityStatus.SCHEDULED &&
-        a.activity_date >= today! &&
-        a.activity_date <= futureDateStr!
-    )
-    .sort((a, b) => a.activity_date.localeCompare(b.activity_date))
-    .slice(0, 10);
+  // Note: Upcoming activities removed - activities no longer have dates
 
   // Recent shift notes (last 10)
   const recentShiftNotes = [...allShiftNotes]
@@ -135,13 +127,22 @@ export async function getDashboard(storage: StorageProvider): Promise<Dashboard>
     })
     .slice(0, 10);
 
+  // Recent behavior incidents (last 10)
+  const recentBehaviorIncidents = [...allBehaviorIncidents]
+    .sort((a, b) => {
+      const dateCompare = b.incident_date.localeCompare(a.incident_date);
+      if (dateCompare !== 0) return dateCompare;
+      return b.created_at.localeCompare(a.created_at);
+    })
+    .slice(0, 10);
+
   // Build dashboard
   const dashboard: Dashboard = {
     summary,
     recent_activities: recentActivities,
-    upcoming_activities: upcomingActivities,
     recent_shift_notes: recentShiftNotes,
     goals_at_risk: goalsAtRisk,
+    recent_behavior_incidents: recentBehaviorIncidents,
   };
 
   return dashboard;
@@ -177,15 +178,9 @@ export async function getClientSummary(
     client_id: clientId,
   } as Partial<Activity>);
 
-  // Get current week range
-  const weekRange = getCurrentWeekRange();
-
-  // Completed activities this week
-  const completedActivitiesThisWeek = allActivities.filter(
-    (a) =>
-      a.status === ActivityStatus.COMPLETED &&
-      a.activity_date >= weekRange.start &&
-      a.activity_date <= weekRange.end
+  // Activities no longer have dates - count total completed
+  const completedActivities = allActivities.filter(
+    (a) => a.status === ActivityStatus.COMPLETED
   );
 
   // Get client's shift notes
@@ -217,7 +212,7 @@ export async function getClientSummary(
     client_id: client.id,
     client_name: client.name,
     active_goals: activeGoals.length,
-    completed_activities_this_week: completedActivitiesThisWeek.length,
+    total_completed_activities: completedActivities.length,
     last_shift_date: lastShiftDate,
     goal_progress: goalProgress,
   };
@@ -241,6 +236,7 @@ export async function getStatistics(storage: StorageProvider): Promise<{
   active_goals: number;
   total_activities: number;
   total_shift_notes: number;
+  total_behavior_incidents: number;
   goals_at_risk: number;
 }> {
   const stats = await storage.getStats();
@@ -259,6 +255,7 @@ export async function getStatistics(storage: StorageProvider): Promise<{
     active_goals: activeGoals.length,
     total_activities: stats.records_by_collection.activities,
     total_shift_notes: stats.records_by_collection.shift_notes,
+    total_behavior_incidents: stats.records_by_collection.behavior_incidents || 0,
     goals_at_risk: goalsAtRisk.length,
   };
 }

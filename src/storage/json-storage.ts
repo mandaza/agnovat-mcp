@@ -7,7 +7,7 @@
  * @module storage/json-storage
  */
 
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 import * as lockfile from 'proper-lockfile';
 import { StorageProvider } from './base.js';
@@ -78,8 +78,10 @@ export class JsonStorage implements StorageProvider {
       'clients',
       'goals',
       'activities',
+      'activity_sessions',
       'shift_notes',
       'stakeholders',
+      'behavior_incidents',
     ];
 
     for (const collection of collections) {
@@ -92,7 +94,7 @@ export class JsonStorage implements StorageProvider {
           last_updated: new Date().toISOString(),
           records: [],
         };
-        await fs.writeJson(filePath, emptyFile, { spaces: 2 });
+        await fs.outputJson(filePath, emptyFile, { spaces: 2 });
       }
 
       // Initialize cache for this collection

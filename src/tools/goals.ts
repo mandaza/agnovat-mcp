@@ -67,6 +67,7 @@ export async function createGoal(storage: StorageProvider, input: unknown): Prom
     target_date: data.target_date,
     status: GoalStatus.NOT_STARTED,
     progress_percentage: 0,
+    achieved_at: null, // Will be set when goal is achieved
     created_at: now,
     updated_at: now,
     archived: false,
@@ -106,17 +107,10 @@ export async function getGoal(
   const allActivities = await storage.list<Activity>('activities');
   const linkedActivities = allActivities.filter((activity) => activity.goal_ids?.includes(goalId));
 
-  // Get last activity date
-  const sortedActivities = linkedActivities.sort((a, b) =>
-    b.activity_date.localeCompare(a.activity_date)
-  );
-  const lastActivityDate = sortedActivities[0]?.activity_date;
-
   // Build goal with activities
   const goalWithActivities: GoalWithActivities = {
     ...goal,
     activity_count: linkedActivities.length,
-    last_activity_date: lastActivityDate,
   };
 
   return goalWithActivities;
@@ -277,7 +271,7 @@ export async function updateGoal(
     data.status === GoalStatus.ACHIEVED && goal.status !== GoalStatus.ACHIEVED
       ? getCurrentTimestamp()
       : data.status !== GoalStatus.ACHIEVED && goal.status === GoalStatus.ACHIEVED
-        ? undefined // Clearing achieved status
+        ? null // Clearing achieved status
         : goal.achieved_at;
 
   // Apply updates

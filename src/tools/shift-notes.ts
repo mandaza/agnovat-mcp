@@ -39,7 +39,7 @@ import { validateShiftTimes, canEditShiftNote } from '../validation/rules.js';
  * @param input - Shift note creation data
  * @returns Created shift note
  * @throws {ValidationError} If input validation fails
- * @throws {NotFoundError} If client, stakeholder, activities, or goals not found
+ * @throws {NotFoundError} If client, user, activities, or goals not found
  * @throws {ConflictError} If client is inactive
  * @throws {StorageError} If storage operation fails
  */
@@ -62,17 +62,17 @@ export async function createShiftNote(
     });
   }
 
-  // Validate stakeholder exists and is active
-  const stakeholder = await storage.read<Stakeholder>('stakeholders', data.stakeholder_id);
-  if (!stakeholder) {
-    throw new NotFoundError('Stakeholder', data.stakeholder_id);
+  // Validate user exists and is active
+  const user = await storage.read<Stakeholder>('stakeholders', data.user_id);
+  if (!user) {
+    throw new NotFoundError('User', data.user_id);
   }
 
-  if (!stakeholder.active) {
+  if (!user.active) {
     throw new ConflictError(
-      'Cannot create shift note for inactive stakeholder',
-      'STAKEHOLDER_INACTIVE',
-      { stakeholder_id: data.stakeholder_id }
+      'Cannot create shift note for inactive user',
+      'USER_INACTIVE',
+      { user_id: data.user_id }
     );
   }
 
@@ -129,18 +129,14 @@ export async function createShiftNote(
   const shiftNote: ShiftNote = {
     id: uuidv4(),
     client_id: data.client_id,
-    stakeholder_id: data.stakeholder_id,
+    user_id: data.user_id,
     shift_date: data.shift_date,
     start_time: data.start_time,
     end_time: data.end_time,
-    general_observations: data.general_observations,
+    primary_locations: data.primary_locations,
+    raw_notes: data.raw_notes,
     activity_ids: data.activity_ids,
     goals_progress: data.goals_progress,
-    mood_wellbeing: data.mood_wellbeing,
-    communication_notes: data.communication_notes,
-    health_safety_notes: data.health_safety_notes,
-    handover_notes: data.handover_notes,
-    incidents: data.incidents,
     created_at: now,
     updated_at: now,
   };
@@ -183,9 +179,9 @@ export async function getShiftNote(
   const client = await storage.read<Client>('clients', shiftNote.client_id);
   const clientName = client?.name || 'Unknown Client';
 
-  // Get stakeholder name
-  const stakeholder = await storage.read<Stakeholder>('stakeholders', shiftNote.stakeholder_id);
-  const stakeholderName = stakeholder?.name || 'Unknown Stakeholder';
+  // Get user name
+  const user = await storage.read<Stakeholder>('stakeholders', shiftNote.user_id);
+  const userName = user?.name || 'Unknown User';
 
   // Calculate duration
   const durationMinutes = calculateDurationMinutes(shiftNote.start_time, shiftNote.end_time);
@@ -194,7 +190,7 @@ export async function getShiftNote(
   const shiftNoteWithDetails: ShiftNoteWithDetails = {
     ...shiftNote,
     client_name: clientName,
-    stakeholder_name: stakeholderName,
+    user_name: userName,
     duration_minutes: durationMinutes,
   };
 
@@ -222,8 +218,8 @@ export async function listShiftNotes(
   if (validFilter.client_id) {
     storageFilter.client_id = validFilter.client_id;
   }
-  if (validFilter.stakeholder_id) {
-    storageFilter.stakeholder_id = validFilter.stakeholder_id;
+  if (validFilter.user_id) {
+    storageFilter.user_id = validFilter.user_id;
   }
 
   // Get shift notes
@@ -406,4 +402,236 @@ export async function getShiftNotesForWeek(
   }
 
   return listShiftNotes(storage, filter);
+}
+
+/**
+ * Format shift note using AI
+ *
+ * Generates a formatting prompt for the raw notes. The actual AI formatting
+ * should be done by the MCP client. This function prepares the prompt and
+ * returns it so the client can use it with their AI model.
+ *
+ * @param storage - Storage provider
+ * @param shiftNoteId - Shift note ID to format
+ * @returns Formatting prompt for AI processing
+ * @throws {NotFoundError} If shift note, client, or user not found
+ */
+export async function generateShiftNoteFormattingPrompt(
+  storage: StorageProvider,
+  shiftNoteId: string
+): Promise<string> {
+  if (!shiftNoteId || typeof shiftNoteId !== 'string') {
+    throw new ValidationError(
+      'Shift note ID is required',
+      'shift_note_id',
+      'INVALID_SHIFT_NOTE_ID'
+    );
+  }
+
+  // Get the shift note
+  const shiftNote = await storage.read<ShiftNote>('shift_notes', shiftNoteId);
+  if (!shiftNote) {
+    throw new NotFoundError('ShiftNote', shiftNoteId);
+  }
+
+  // Get client details
+  const client = await storage.read<Client>('clients', shiftNote.client_id);
+  if (!client) {
+    throw new NotFoundError('Client', shiftNote.client_id);
+  }
+
+  // Get user details
+  const user = await storage.read<Stakeholder>('stakeholders', shiftNote.user_id);
+  if (!user) {
+    throw new NotFoundError('User', shiftNote.user_id);
+  }
+
+  // Generate the formatting prompt
+  const prompt = `You are a professional NDIS support documentation specialist. Please rewrite the following raw shift notes into a well-formatted, grammatically correct shift note while maintaining the original context and details.
+
+Format the notes according to this structure:
+
+**Date:** ${shiftNote.shift_date}
+**Shift Time:** ${shiftNote.start_time} – ${shiftNote.end_time}
+**Support Staff:** ${user.name}
+**Primary Locations:** ${shiftNote.primary_locations?.join(', ') || 'Not specified'}
+
+**Details of Support Provided**
+
+**Morning Routine:**
+[Summarize what ${client.name} did first thing in the morning - breakfast, cleaning, preparing for activities, etc. Use proper grammar and professional language.]
+
+**Activities:**
+[Summarize the key activities during the shift - work activities, outings, lunch, social interactions, etc. Be specific but concise.]
+
+**Afternoon/Evening:**
+[Summarize the end of shift activities - relaxing, watching TV, dinner, medication support, etc.]
+
+**Behaviours of Concern Observed**
+[Note any challenging behaviors observed - fixations, distractions, refusals, agitation, etc. If none, state "No significant behaviours of concern were observed during this shift."]
+
+[If behaviours were observed, mention how staff supported or redirected ${client.name}.]
+
+**Home Environment Description**
+${client.name} lives in a tidy, supportive family home. They have access to all shared living areas and their own bedroom, which is organized and personalized. Their father and family provide consistent care and support.
+
+**Summary**
+${client.name} [describe participation level] in the planned activities with [add positive highlights]. [If behaviours of concern were observed, add: "While some behaviours of concern were observed, these were managed with redirection and reassurance."] The shift ended calmly with ${client.name} settled at home.
+
+---
+
+**Raw Notes from Staff:**
+${shiftNote.raw_notes}
+
+**Instructions:**
+1. Rewrite the raw notes into the format above
+2. Use proper English grammar and professional language
+3. Do NOT change the context, facts, or details provided
+4. Do NOT add information that wasn't in the raw notes
+5. Fill in each section based on what was mentioned in the raw notes
+6. If a section has no relevant information in the raw notes, note that briefly
+7. Ensure the client's name (${client.name}) is used consistently
+8. Keep the tone professional but warm and person-centered
+
+Please provide ONLY the formatted shift note without any preamble or explanation.`;
+
+  return prompt;
+}
+
+/**
+ * Save formatted shift note sections
+ *
+ * Updates a shift note with the AI-formatted content. This should be called
+ * after the MCP client has received the formatted note from the AI.
+ *
+ * @param storage - Storage provider
+ * @param shiftNoteId - Shift note ID
+ * @param formattedNote - The complete formatted note from AI
+ * @returns Updated shift note
+ * @throws {NotFoundError} If shift note not found
+ */
+export async function saveFormattedShiftNote(
+  storage: StorageProvider,
+  shiftNoteId: string,
+  formattedNote: string
+): Promise<ShiftNote> {
+  if (!shiftNoteId || typeof shiftNoteId !== 'string') {
+    throw new ValidationError(
+      'Shift note ID is required',
+      'shift_note_id',
+      'INVALID_SHIFT_NOTE_ID'
+    );
+  }
+
+  if (!formattedNote || typeof formattedNote !== 'string') {
+    throw new ValidationError(
+      'Formatted note is required',
+      'formatted_note',
+      'INVALID_FORMATTED_NOTE'
+    );
+  }
+
+  // Get existing shift note
+  const shiftNote = await storage.read<ShiftNote>('shift_notes', shiftNoteId);
+  if (!shiftNote) {
+    throw new NotFoundError('ShiftNote', shiftNoteId);
+  }
+
+  // Parse sections from formatted note
+  const sections = parseFormattedSections(formattedNote);
+
+  // Update shift note with formatted sections
+  const updatedShiftNote: ShiftNote = {
+    ...shiftNote,
+    ...sections,
+    formatted_note: formattedNote,
+    updated_at: getCurrentTimestamp(),
+  };
+
+  // Save to storage
+  await storage.write('shift_notes', updatedShiftNote);
+
+  return updatedShiftNote;
+}
+
+/**
+ * Parse formatted shift note into sections
+ *
+ * @param formattedNote - The complete formatted note
+ * @returns Object with individual sections
+ */
+function parseFormattedSections(formattedNote: string): {
+  morning_routine?: string;
+  activities?: string;
+  afternoon_evening?: string;
+  behaviours_of_concern?: string;
+  behaviour_support_provided?: string;
+  home_environment?: string;
+  summary?: string;
+} {
+  const sections: {
+    morning_routine?: string;
+    activities?: string;
+    afternoon_evening?: string;
+    behaviours_of_concern?: string;
+    behaviour_support_provided?: string;
+    home_environment?: string;
+    summary?: string;
+  } = {};
+
+  // Extract morning routine
+  const morningMatch = formattedNote.match(
+    /\*\*Morning Routine:\*\*\s*([\s\S]*?)(?=\n\*\*Activities:|$)/i
+  );
+  if (morningMatch && morningMatch[1]) {
+    sections.morning_routine = morningMatch[1].trim();
+  }
+
+  // Extract activities
+  const activitiesMatch = formattedNote.match(
+    /\*\*Activities:\*\*\s*([\s\S]*?)(?=\n\*\*Afternoon\/Evening:|$)/i
+  );
+  if (activitiesMatch && activitiesMatch[1]) {
+    sections.activities = activitiesMatch[1].trim();
+  }
+
+  // Extract afternoon/evening
+  const afternoonMatch = formattedNote.match(
+    /\*\*Afternoon\/Evening:\*\*\s*([\s\S]*?)(?=\n\*\*Behaviours of Concern|$)/i
+  );
+  if (afternoonMatch && afternoonMatch[1]) {
+    sections.afternoon_evening = afternoonMatch[1].trim();
+  }
+
+  // Extract behaviours of concern section
+  const behavioursMatch = formattedNote.match(
+    /\*\*Behaviours of Concern Observed\*\*\s*([\s\S]*?)(?=\n\*\*Home Environment|$)/i
+  );
+  if (behavioursMatch && behavioursMatch[1]) {
+    const behavioursText = behavioursMatch[1].trim();
+    const paragraphs = behavioursText.split(/\n\n+/);
+
+    if (paragraphs.length >= 1 && paragraphs[0]) {
+      sections.behaviours_of_concern = paragraphs[0].trim();
+    }
+    if (paragraphs.length >= 2 && paragraphs[1]) {
+      sections.behaviour_support_provided = paragraphs[1].trim();
+    }
+  }
+
+  // Extract home environment
+  const homeMatch = formattedNote.match(
+    /\*\*Home Environment Description\*\*\s*([\s\S]*?)(?=\n\*\*Summary|$)/i
+  );
+  if (homeMatch && homeMatch[1]) {
+    sections.home_environment = homeMatch[1].trim();
+  }
+
+  // Extract summary
+  const summaryMatch = formattedNote.match(/\*\*Summary\*\*\s*([\s\S]*?)$/i);
+  if (summaryMatch && summaryMatch[1]) {
+    sections.summary = summaryMatch[1].trim();
+  }
+
+  return sections;
 }

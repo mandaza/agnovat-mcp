@@ -8,14 +8,19 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { ListResourcesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { StorageProvider } from '../storage/index.js';
 import { getClient } from '../tools/clients.js';
 import { getGoal } from '../tools/goals.js';
 import { getActivity } from '../tools/activities.js';
+import { getActivitySession } from '../tools/activity-sessions.js';
 import { getShiftNote } from '../tools/shift-notes.js';
 import { getStakeholder } from '../tools/stakeholders.js';
 import { getDashboard } from '../tools/dashboard.js';
+import { getBehaviorIncident } from '../tools/behavior-incidents.js';
 import { logger } from '../utils/logger.js';
 import { ApplicationError, NotFoundError } from '../utils/errors.js';
 
@@ -24,37 +29,49 @@ import { ApplicationError, NotFoundError } from '../utils/errors.js';
  */
 const resourceTemplates = [
   {
-    uriTemplate: 'client:///{client_id}',
+    uri: 'client:///{client_id}',
     name: 'Client Profile',
     description: 'Access individual client profiles with statistics',
     mimeType: 'application/json',
   },
   {
-    uriTemplate: 'goal:///{goal_id}',
+    uri: 'goal:///{goal_id}',
     name: 'Goal Details',
     description: 'Access individual goal details with progress information',
     mimeType: 'application/json',
   },
   {
-    uriTemplate: 'activity:///{activity_id}',
+    uri: 'activity:///{activity_id}',
     name: 'Activity Details',
     description: 'Access individual activity details with linked information',
     mimeType: 'application/json',
   },
   {
-    uriTemplate: 'shift_note:///{shift_note_id}',
+    uri: 'activity_session:///{session_id}',
+    name: 'Activity Session',
+    description: 'Access individual activity session with engagement and goal progress data',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'shift_note:///{shift_note_id}',
     name: 'Shift Note',
     description: 'Access individual shift note with full documentation',
     mimeType: 'application/json',
   },
   {
-    uriTemplate: 'stakeholder:///{stakeholder_id}',
+    uri: 'stakeholder:///{stakeholder_id}',
     name: 'Stakeholder Profile',
     description: 'Access individual stakeholder profiles with activity summary',
     mimeType: 'application/json',
   },
   {
-    uriTemplate: 'dashboard://summary',
+    uri: 'behavior_incident:///{incident_id}',
+    name: 'Behavior Incident',
+    description: 'Access individual behavior incident reports with full details',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'dashboard://summary',
     name: 'Dashboard Summary',
     description: 'Access complete dashboard with aggregated metrics',
     mimeType: 'application/json',
@@ -100,15 +117,24 @@ async function fetchResource(storage: StorageProvider, uri: string): Promise<unk
     case 'activity':
       return getActivity(storage, id);
 
+    case 'activity_session':
+      return getActivitySession(storage, id);
+
     case 'shift_note':
       return getShiftNote(storage, id);
 
     case 'stakeholder':
       return getStakeholder(storage, id);
 
+    case 'behavior_incident':
+      return getBehaviorIncident(storage, id);
+
     case 'dashboard':
       if (id !== 'summary') {
-        throw new ApplicationError('Invalid dashboard path, use: dashboard://summary', 'INVALID_PATH');
+        throw new ApplicationError(
+          'Invalid dashboard path, use: dashboard://summary',
+          'INVALID_PATH'
+        );
       }
       return getDashboard(storage);
 
@@ -125,7 +151,7 @@ async function fetchResource(storage: StorageProvider, uri: string): Promise<unk
  */
 export function registerResources(server: Server, storage: StorageProvider): void {
   // List resources handler
-  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  server.setRequestHandler(ListResourcesRequestSchema, () => ({
     resources: resourceTemplates,
   }));
 

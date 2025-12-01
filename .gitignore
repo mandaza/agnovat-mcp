@@ -5,6 +5,13 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Convex compiled files (Convex compiles .ts files itself)
+convex/**/*.js
+convex/**/*.js.map
+convex/**/*.d.ts
+convex/**/*.d.ts.map
+!convex/_generated/**
+
 # Testing
 coverage/
 .nyc_output/

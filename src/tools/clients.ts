@@ -104,11 +104,8 @@ export async function getClient(
     client_id: clientId,
   } as Partial<Activity>);
 
-  // Get last activity date
-  const sortedActivities = activities.sort((a, b) =>
-    b.activity_date.localeCompare(a.activity_date)
-  );
-  const lastActivityDate = sortedActivities[0]?.activity_date;
+  // Activities no longer have dates - count only
+  const activityCount = activities.length;
 
   // Get shift notes for this client
   const shiftNotes = await storage.list<ShiftNote>('shift_notes', {
@@ -122,8 +119,7 @@ export async function getClient(
     ...client,
     total_goals: goals.length,
     active_goals: activeGoals.length,
-    total_activities: activities.length,
-    last_activity_date: lastActivityDate,
+    total_activities: activityCount,
     last_shift_note_date: lastShiftNoteDate,
   };
 

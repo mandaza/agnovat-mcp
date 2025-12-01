@@ -2,12 +2,22 @@
  * Convex Storage Implementation
  *
  * StorageProvider implementation using Convex database.
+ *
+ * Note: Uses type assertions where Convex API requires specific ID types.
+ * This is necessary due to Convex's auto-generated type system.
  */
 
 import { ConvexClient } from 'convex/browser';
 import { StorageProvider } from './base.js';
 import { CollectionName, Filter, QueryOptions } from './types.js';
 import { api } from '../../convex/_generated/api.js';
+import { logger } from '../utils/logger.js';
+
+// Type for Convex record with _id field
+interface ConvexRecord {
+  _id: string;
+  [key: string]: unknown;
+}
 
 export interface ConvexStorageConfig {
   /** Convex deployment URL */
@@ -30,53 +40,58 @@ export class ConvexStorage implements StorageProvider {
     // Convex client is ready to use immediately
   }
 
-  async read<T extends { id: string }>(
-    collection: CollectionName,
-    id: string
-  ): Promise<T | null> {
+  async read<T extends { id: string }>(collection: CollectionName, id: string): Promise<T | null> {
     try {
-      const record = await this.client.query(api.queries.getById, {
-        id: id as any, // Type cast for Convex ID
-      });
+      // Use Convex's _id directly for lookup
+      const record = (await this.client.query(api.queries.getById, {
+        id: id as never,
+      })) as ConvexRecord | null;
 
       if (!record) return null;
 
-      // Convert Convex _id to our id field
-      return {
-        ...record,
-        id: record._id,
-      } as any as T;
+      // Map Convex's _id to our id field
+      const { _id, _creationTime, ...rest } = record;
+      return { ...rest, id: _id } as T;
     } catch (error) {
-      console.error(`Error reading from ${collection}:`, error);
+      logger.error(`Error reading from ${collection}`, error instanceof Error ? error : undefined);
       return null;
     }
   }
 
-  async write<T extends { id: string }>(
-    collection: CollectionName,
-    record: T
-  ): Promise<void> {
-    const { id, ...data } = record;
+  async write<T extends { id: string }>(collection: CollectionName, record: T): Promise<void> {
+    // Try to get existing record by treating record.id as Convex _id
+    let existingRecord: ConvexRecord | null = null;
+    try {
+      existingRecord = (await this.client.query(api.queries.getById, {
+        id: record.id as never,
+      })) as ConvexRecord | null;
+    } catch (error) {
+      // Record doesn't exist, that's fine - we'll create it
+      existingRecord = null;
+    }
 
-    // Check if record exists
-    const existing = await this.read(collection, id);
-    const convexId = existing ? (id as any) : undefined;
+    const convexId = existingRecord ? existingRecord._id : undefined;
 
+    // Strip out the id field - Convex will use _id instead
+    const { id, ...dataWithoutId } = record;
+
+    // Upsert without the id field
     await this.client.mutation(api.mutations.upsert, {
       table: collection,
-      id: convexId,
-      data,
+      id: convexId as never,
+      data: dataWithoutId as never,
     });
   }
 
   async delete(collection: CollectionName, id: string): Promise<boolean> {
     try {
+      // Use Convex's _id directly
       await this.client.mutation(api.mutations.deleteRecord, {
-        id: id as any,
+        id: id as never,
       });
       return true;
     } catch (error) {
-      console.error(`Error deleting from ${collection}:`, error);
+      logger.error(`Error deleting from ${collection}`, error instanceof Error ? error : undefined);
       return false;
     }
   }
@@ -87,20 +102,20 @@ export class ConvexStorage implements StorageProvider {
     options?: QueryOptions
   ): Promise<T[]> {
     try {
-      const records = await this.client.query(api.queries.list, {
+      const records = (await this.client.query(api.queries.list, {
         table: collection,
-        filter: filter as any,
+        filter: filter as never,
         limit: options?.limit,
         offset: options?.offset,
-      });
+      })) as ConvexRecord[];
 
-      // Convert Convex records to our format
-      return records.map((record: any) => ({
-        ...record,
-        id: record._id,
-      })) as T[];
+      // Map Convex's _id to our id field
+      return records.map((record) => {
+        const { _id, _creationTime, ...rest } = record;
+        return { ...rest, id: _id } as T;
+      });
     } catch (error) {
-      console.error(`Error listing ${collection}:`, error);
+      logger.error(`Error listing ${collection}`, error instanceof Error ? error : undefined);
       return [];
     }
   }
@@ -109,21 +124,27 @@ export class ConvexStorage implements StorageProvider {
     try {
       return await this.client.query(api.queries.count, {
         table: collection,
-        filter: filter as any,
+        filter: filter as never,
       });
     } catch (error) {
-      console.error(`Error counting ${collection}:`, error);
+      logger.error(`Error counting ${collection}`, error instanceof Error ? error : undefined);
       return 0;
     }
   }
 
   async exists(collection: CollectionName, id: string): Promise<boolean> {
     try {
-      return await this.client.query(api.queries.exists, {
-        id: id as any,
-      });
+      // Use Convex's _id directly
+      const record = (await this.client.query(api.queries.getById, {
+        id: id as never,
+      })) as ConvexRecord | null;
+
+      return record !== null;
     } catch (error) {
-      console.error(`Error checking existence in ${collection}:`, error);
+      logger.error(
+        `Error checking existence in ${collection}`,
+        error instanceof Error ? error : undefined
+      );
       return false;
     }
   }
@@ -139,21 +160,23 @@ export class ConvexStorage implements StorageProvider {
     records_by_collection: Record<CollectionName, number>;
   }> {
     try {
-      const stats = await this.client.query(api.queries.getStats, {});
-      return stats as {
+      const stats = (await this.client.query(api.queries.getStats, {})) as {
         total_records: number;
         records_by_collection: Record<CollectionName, number>;
       };
+      return stats;
     } catch (error) {
-      console.error('Error getting stats:', error);
+      logger.error('Error getting stats', error instanceof Error ? error : undefined);
       return {
         total_records: 0,
         records_by_collection: {
           clients: 0,
           goals: 0,
           activities: 0,
+          activity_sessions: 0,
           stakeholders: 0,
           shift_notes: 0,
+          behavior_incidents: 0,
         },
       };
     }
@@ -169,21 +192,21 @@ export class ConvexStorage implements StorageProvider {
     return allRecords.filter(predicate);
   }
 
-  async createBackup(): Promise<string> {
+  createBackup(): Promise<string> {
     // Convex handles backups automatically at the platform level
     const timestamp = new Date().toISOString();
-    console.log(`Convex backups are handled automatically. Timestamp: ${timestamp}`);
-    return `convex-backup-${timestamp}`;
+    logger.info(`Convex backups are handled automatically. Timestamp: ${timestamp}`);
+    return Promise.resolve(`convex-backup-${timestamp}`);
   }
 
-  async restoreBackup(backupPath: string): Promise<void> {
+  restoreBackup(backupPath: string): Promise<void> {
     // Restoration would need to be done via Convex dashboard
-    console.log(`Restoration from ${backupPath} must be done via Convex dashboard`);
-    throw new Error('Backup restoration must be performed via Convex dashboard');
+    logger.info(`Restoration from ${backupPath} must be done via Convex dashboard`);
+    return Promise.reject(new Error('Backup restoration must be performed via Convex dashboard'));
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
     // Close Convex client connection
-    this.client.close();
+    return Promise.resolve(this.client.close());
   }
 }

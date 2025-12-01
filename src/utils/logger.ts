@@ -182,6 +182,7 @@ export class Logger {
     const errorStr = error ? ` [${error.name}: ${error.message}]` : '';
     const logMessage = `[${timestamp}] ${level}: ${message}${contextStr}${errorStr}`;
 
+    /* eslint-disable no-console -- Logger intentionally uses console for output */
     switch (level) {
       case LogLevel.DEBUG:
         console.debug(logMessage);
@@ -199,6 +200,7 @@ export class Logger {
         }
         break;
     }
+    /* eslint-enable no-console */
   }
 
   /**
@@ -207,7 +209,7 @@ export class Logger {
   private safeStringify(obj: unknown): string {
     try {
       return JSON.stringify(obj, this.getCircularReplacer());
-    } catch (error) {
+    } catch {
       return '[Unable to stringify]';
     }
   }

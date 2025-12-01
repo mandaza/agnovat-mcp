@@ -11,6 +11,7 @@ import { GoalStatus } from './enums.js';
 import { Activity } from './activity.js';
 import { ShiftNote } from './shift-note.js';
 import { Goal } from './goal.js';
+import { BehaviorIncident } from './behavior-incident.js';
 
 /**
  * Dashboard summary with key metrics
@@ -19,7 +20,7 @@ import { Goal } from './goal.js';
  * @property {number} total_clients - Total number of clients
  * @property {number} active_clients - Number of active clients
  * @property {number} total_active_goals - Total active goals across all clients
- * @property {number} activities_this_week - Number of activities in current week
+ * @property {number} total_activities_in_pool - Total activities in the pool/catalog
  * @property {number} shift_notes_this_week - Number of shift notes in current week
  * @property {GoalsByStatus} goals_by_status - Breakdown of goals by status
  * @property {number} goals_at_risk - Number of goals at risk (< 50% progress, < 14 days)
@@ -28,10 +29,12 @@ export interface DashboardSummary {
   total_clients: number;
   active_clients: number;
   total_active_goals: number;
-  activities_this_week: number;
+  total_activities_in_pool: number;
   shift_notes_this_week: number;
   goals_by_status: GoalsByStatus;
   goals_at_risk: number;
+  total_behavior_incidents: number;
+  high_severity_incidents_this_month: number;
 }
 
 /**
@@ -56,20 +59,20 @@ export interface GoalsByStatus {
  * Complete dashboard data
  *
  * Includes summary metrics and recent activity lists.
+ * Note: Activities no longer have dates - scheduling is handled separately.
  *
  * @interface Dashboard
  * @property {DashboardSummary} summary - Summary statistics
- * @property {Activity[]} recent_activities - Last 10 activities
- * @property {Activity[]} upcoming_activities - Next 7 days of scheduled activities
+ * @property {Activity[]} recent_activities - Last 10 created activities
  * @property {ShiftNote[]} recent_shift_notes - Last 10 shift notes
  * @property {Goal[]} goals_at_risk - Goals at risk of not being achieved
  */
 export interface Dashboard {
   summary: DashboardSummary;
   recent_activities: Activity[];
-  upcoming_activities: Activity[];
   recent_shift_notes: ShiftNote[];
   goals_at_risk: Goal[];
+  recent_behavior_incidents: BehaviorIncident[];
 }
 
 /**
@@ -79,7 +82,7 @@ export interface Dashboard {
  * @property {string} client_id - Client ID
  * @property {string} client_name - Client name
  * @property {number} active_goals - Number of active goals
- * @property {number} completed_activities_this_week - Activities completed this week
+ * @property {number} total_completed_activities - Total completed activities (not date-specific)
  * @property {string} [last_shift_date] - Date of last shift (ISO 8601)
  * @property {GoalProgress[]} goal_progress - Progress of all active goals
  */
@@ -87,7 +90,7 @@ export interface ClientSummary {
   client_id: string;
   client_name: string;
   active_goals: number;
-  completed_activities_this_week: number;
+  total_completed_activities: number;
   last_shift_date?: string;
   goal_progress: ClientGoalProgress[];
 }
